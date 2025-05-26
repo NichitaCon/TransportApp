@@ -1,0 +1,33 @@
+{
+    "entity": [
+
+        //entitiy object
+        {
+            "id": "T1",
+            "trip_update": {
+                "trip": {
+                    "trip_id": "4658_93862",
+                    "start_time": "12:15:00",
+                    "start_date": "20250526",
+                    "schedule_relationship": "SCHEDULED",
+                    "route_id": "4654_97689",
+                    "direction_id": 1
+                },
+                "stop_time_update": [
+                    {
+                        "stop_sequence": 16,
+                        "arrival": {
+                            "delay": 8071
+                        },
+                        "stop_id": "8240B111911",
+                        "schedule_relationship": "SCHEDULED"
+                    }
+                ],
+                "vehicle": {
+                    "id": "1688"
+                },
+                "timestamp": "1748277822"
+            }
+        }
+    ]
+}

@@ -1,17 +1,19 @@
 import { Stack, Link } from "expo-router";
 
-import { Text } from "react-native";
+import { Text, View } from "react-native";
 import { Button } from "~/components/Button";
-import { Container } from "~/components/Container";
+
+import MapView from "react-native-maps";
 import { ScreenContent } from "~/components/ScreenContent";
 
 export default function Home() {
     return (
         <>
             <Stack.Screen options={{ title: "Home" }} />
-            <Container>
-               <Text>This is the Map screen</Text>
-            </Container>
+
+            <View style={{ flex: 1 }}>
+                <MapView style={{ flex: 1 }} />
+            </View>
         </>
     );
 }

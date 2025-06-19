@@ -12,7 +12,9 @@ web-build/
 # expo router
 expo-env.d.ts
 
+.env
 
+savestops.js
 
 ios
 android

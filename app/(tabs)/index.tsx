@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, ActivityIndicator } from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
+import { router } from "expo-router";
 
 // --- Configuration ---
 const OPERATOR_IDS = {
@@ -26,10 +27,18 @@ const TRANSITLAND_API_URL = "https://transit.land/api/v2/rest";
  * A custom hook to fetch and manage transport stop data.
  * This encapsulates the data fetching logic for better separation of concerns.
  */
+type Stop = {
+    id: string;
+    latitude: number;
+    longitude: number;
+    name: string;
+    operatorId?: string;
+};
+
 const useTransportStops = () => {
-    const [stops, setStops] = useState([]);
+    const [stops, setStops] = useState<Stop[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         // We define the async function inside useEffect to avoid it being recreated on every render.
@@ -58,10 +67,9 @@ const useTransportStops = () => {
 
                 // console.log("data", data)
 
-
                 // Minor optimization: check for stops array before mapping
                 if (data.stops && Array.isArray(data.stops)) {
-                    console.log("passed first boolean");
+                    // console.log("passed first boolean");
 
                     const formattedStops = data.stops
                         .map((stop) => {
@@ -86,32 +94,25 @@ const useTransportStops = () => {
                             //     console.warn("NO latitude");
                             // }
 
-                            // console.log(data.stops.length)
-
-                            if (!longitude || !latitude) {
-                                // console.log("HAD NO AGENCY LONG OR LAT")
-                                return null;
-                            }
-
-                            console.log("returned an object");
                             return {
                                 id: stop.onestop_id,
                                 latitude,
                                 longitude,
                                 name: stop.stop_name || "Unnamed Stop",
-                                // operatorId: agency.operator_onestop_id,
+                                operatorId: stop.operator_onestop_id,
                             };
+
                         })
                         .filter(Boolean); // removes nulls
                     setStops(formattedStops);
                     console.log(
                         `Successfully formatted ${formattedStops.length} stops.`,
                     );
-                    console.log(
-                        "formatted stops",
-                        JSON.stringify(formattedStops, null, 2),
-                    );
-                    console.log("stops: ", stops);
+                    // console.log(
+                    //     "formatted stops",
+                    //     JSON.stringify(formattedStops, null, 2),
+                    // );
+                    // console.log("stops: ", stops);
                 } else {
                     setStops([]);
                     console.warn("No stops found in the API response.");
@@ -135,7 +136,7 @@ const useTransportStops = () => {
 // --- Main App Component ---
 export default function App() {
     const { stops, loading, error } = useTransportStops();
-    console.log("stopos length in app return", stops.length)
+    // console.log("stopos length in app return", stops.length);
 
     // Loading State UI
     if (loading) {
@@ -188,6 +189,16 @@ export default function App() {
                             title={stop.name}
                             // description={info.name}
                             // pinColor={info.pinColor}
+                            onPress={() => {
+                                console.log(stop.id, "marker pressed");
+                                router.push({
+                                    pathname: "/selectedStop/[onestop_id]",
+                                    params: {
+                                        onestop_id: stop.id,
+                                        stopName: stop.name,
+                                    },
+                                });
+                            }}
                         />
                     );
                 })}

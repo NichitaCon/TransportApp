@@ -38,7 +38,7 @@ const useTransportArrivals = () => {
             const key = process.env.EXPO_PUBLIC_TRANSITLAND_KEY;
             // console.warn(key)
 
-            const url = `https://transit.land/api/v2/rest/stops/${onestop_id}/departures?api_key=${key}&limit=10`;
+            const url = `https://transit.land/api/v2/rest/stops/${onestop_id}/departures?api_key=${key}&limit=15`;
 
             // console.log("Fetching stops from:", url);
 
@@ -100,6 +100,15 @@ const useTransportArrivals = () => {
                                 estimatedDepartureDuration,
                             );
 
+                            if (stop.trip.schedule_relationship == "STATIC") {
+                                console.log(
+                                    "STATIC DEPARTURE, EJECTED FROM FORMATTED ARRIVALS",
+                                );
+                                return null;
+                            }
+
+                            if (estimatedDepartureDuration > 80) return null
+
                             return {
                                 id: stop.trip.trip_id,
                                 scheduledArrival: stop.arrival.scheduled,
@@ -112,7 +121,12 @@ const useTransportArrivals = () => {
                                 tripHeadSign: stop.trip.trip_headsign,
                             };
                         })
-                        .filter(Boolean); // removes nulls
+                        .filter(Boolean) // removes nulls
+                        .sort(
+                            (a, b) =>
+                                a.estimatedDepartureDuration -
+                                b.estimatedDepartureDuration,
+                        );
                     setArrivals(formattedArrivals);
                     console.log(
                         `Successfully formatted ${formattedArrivals.length} arrivals.`,
@@ -136,7 +150,7 @@ const useTransportArrivals = () => {
         };
 
         fetchArrivalsData();
-    }, []); // Empty dependency array ensures this runs only once.
+    }, [onestop_id]); // Empty dependency array ensures this runs only once.
 
     return { arrivals, loading, error };
 };
@@ -179,7 +193,11 @@ export default function SelectedStop() {
                     headerShown: true,
                     header: () => (
                         // You can make the title dynamic based on the stop ID or fetched data
-                        <CustomHeader back={true} header={stopName} directionDepartsView={true} />
+                        <CustomHeader
+                            back={true}
+                            header={stopName}
+                            directionDepartsView={true}
+                        />
                     ),
                 }}
             />

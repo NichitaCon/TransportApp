@@ -1,6 +1,6 @@
 import { SafeAreaView, View } from 'react-native';
 
 export const Container = ({ children }: { children: React.ReactNode }) => {
-  return <View className='p-5 bg-gray-100 flex-1'>{children}</View>;
+return <View style={{ backgroundColor: "#f9f9f9" }} className='p-5 flex-1'>{children}</View>;
 };
 

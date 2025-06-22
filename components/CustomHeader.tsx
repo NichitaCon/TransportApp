@@ -1,31 +1,25 @@
-import { View, Text, Pressable, TouchableOpacity } from "react-native";
-
+import { View, Text, Pressable } from "react-native";
 import Entypo from "@expo/vector-icons/Entypo";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import { useState } from "react";
+import { Dimensions } from 'react-native';
 
 type CustomHeaderProps = {
     header: string;
-    back: boolean;
+    back: boolean; 
     directionDepartsView: boolean;
-    rightButtons?: Array<any>;
 };
 
 export default function Header({
     header,
     back,
     directionDepartsView,
-    rightButtons = [],
 }: CustomHeaderProps) {
     const insets = useSafeAreaInsets();
     const AdjustedInset = insets.top;
-    const [isBackEnabled, setIsBackEnabled] = useState(
-        back === undefined ? true : back,
-    );
+    const HeaderWidth = Dimensions.get('window').width / 1.19;
 
-    console.log("header passed into component", header);
+
     return (
         <View
             style={{
@@ -34,9 +28,9 @@ export default function Header({
             }}
             className="p-4 bg-white"
         >
-            {/* Title and back */}
+            {/* Title */}
             <View className="flex-row items-center">
-                {isBackEnabled == true && (
+                {back && (
                     <Pressable onPress={() => router.back()}>
                         <Entypo
                             name="chevron-left"
@@ -52,8 +46,9 @@ export default function Header({
                     ellipsizeMode="tail"
                     style={{
                         letterSpacing: -1,
-                        paddingTop: 6, // Add padding to prevent clipping
-                        textAlignVertical: "center", // Ensure vertical alignment
+                        paddingTop: 6,
+                        textAlignVertical: "center",
+                        maxWidth: HeaderWidth // adjust as needed
                     }}
                 >
                     {header}

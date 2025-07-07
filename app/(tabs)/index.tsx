@@ -1,6 +1,17 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, ActivityIndicator } from "react-native";
-import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
+import React, { useState, useEffect, useRef } from "react";
+import {
+    View,
+    Text,
+    ActivityIndicator,
+    Dimensions,
+    Pressable,
+} from "react-native";
+import MapView, { Marker } from "react-native-maps";
+import {
+    Clusterer,
+    isPointCluster,
+    useClusterer,
+} from "react-native-clusterer";
 import { router } from "expo-router";
 
 // --- Configuration ---
@@ -27,21 +38,33 @@ const TRANSITLAND_API_URL = "https://transit.land/api/v2/rest";
  * A custom hook to fetch and manage transport stop data.
  * This encapsulates the data fetching logic for better separation of concerns.
  */
-type Stop = {
+type GeoJSONStop = {
+    type: "Feature";
     id: string;
+    geometry: {
+        type: "Point";
+        coordinates: [number, number]; // [lng, lat]
+    };
+    properties: {
+        name: string;
+        oneStopId: string;
+        stopKey: string;
+    };
+};
+
+type Region = {
     latitude: number;
     longitude: number;
-    name: string;
-    operatorId?: string;
+    latitudeDelta: number;
+    longitudeDelta: number;
 };
 
 const useTransportStops = () => {
-    const [stops, setStops] = useState<Stop[]>([]);
+    const [stops, setStops] = useState<GeoJSONStop[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        // We define the async function inside useEffect to avoid it being recreated on every render.
         const fetchStopsData = async () => {
             setLoading(true);
             setError(null);
@@ -50,10 +73,7 @@ const useTransportStops = () => {
 
             const url = `${TRANSITLAND_API_URL}/stops?served_by_onestop_ids=${operatorsQuery}&limit=9000&api_key=${key}`;
 
-            // console.log("Fetching stops from:", url);
-
             try {
-                // For production: uncomment the fetch below
                 const response = await fetch(url);
                 if (!response.ok) {
                     throw new Error(
@@ -62,57 +82,47 @@ const useTransportStops = () => {
                 }
                 const data = await response.json();
 
-                // For development: load local JSON instead of fetching from API
-                // const data = require("~/irishrail_stops.json");
-
-                // console.log("data", data)
-
-                // Minor optimization: check for stops array before mapping
                 if (data.stops && Array.isArray(data.stops)) {
-                    // console.log("passed first boolean");
-
                     const formattedStops = data.stops
                         .map((stop) => {
                             const [longitude, latitude] =
                                 stop.geometry?.coordinates || [];
-                            // const agency = Array.isArray(stop.agencies)
-                            //     ? stop.agencies.find(
-                            //           (a) =>
-                            //               OPERATOR_INFO[a.operator_onestop_id],
-                            //       )
-                            //     : null;
 
-                            // if (!agency) {
-                            //     console.warn("NO AGENCY");
-                            // }
+                            if (
+                                !stop.onestop_id ||
+                                stop.onestop_id == "stop-undefined"
+                            ) {
+                                console.warn("Stop missing id:", stop);
+                            }
 
-                            // if (!longitude) {
-                            //     console.warn("NO longitude");
-                            // }
-
-                            // if (!latitude) {
-                            //     console.warn("NO latitude");
-                            // }
-
+                            if (
+                                // !stop.onestop_id ||
+                                latitude == null ||
+                                longitude == null
+                            ) {
+                                return null;
+                            }
                             return {
-                                id: stop.onestop_id,
-                                latitude,
-                                longitude,
-                                name: stop.stop_name || "Unnamed Stop",
-                                operatorId: stop.operator_onestop_id,
+                                type: "Feature",
+                                id: stop.stop_id,
+                                geometry: {
+                                    type: "Point",
+                                    coordinates: [longitude, latitude],
+                                },
+                                properties: {
+                                    name: stop.stop_name || "Unnamed Stop",
+                                    oneStopId: stop.onestop_id,
+                                    stopKey: stop.id,
+                                    // You can include more data here if needed
+                                },
                             };
-
                         })
                         .filter(Boolean); // removes nulls
+
                     setStops(formattedStops);
                     console.log(
                         `Successfully formatted ${formattedStops.length} stops.`,
                     );
-                    // console.log(
-                    //     "formatted stops",
-                    //     JSON.stringify(formattedStops, null, 2),
-                    // );
-                    // console.log("stops: ", stops);
                 } else {
                     setStops([]);
                     console.warn("No stops found in the API response.");
@@ -128,14 +138,34 @@ const useTransportStops = () => {
         };
 
         fetchStopsData();
-    }, []); // Empty dependency array ensures this runs only once.
+    }, []);
 
     return { stops, loading, error };
 };
 
+const initialRegion: Region = {
+    latitude: 53.3498, // Centered on Dublin
+    longitude: -6.2603,
+    latitudeDelta: 0.1,
+    longitudeDelta: 0.1,
+};
+
+const { width, height } = Dimensions.get("window");
+
 // --- Main App Component ---
 export default function App() {
     const { stops, loading, error } = useTransportStops();
+    const { width, height } = Dimensions.get("window");
+    const mapRef = useRef<MapView>(null);
+
+    const [region, setRegion] = useState(initialRegion);
+    const [points] = useClusterer(stops, { width, height }, region, {
+        // 4. Options object
+        radius: 20, // Increase radius to cluster more aggressively
+        minPoints: 2, // Optional: min points to form a cluster
+        maxZoom: 28, // Optional: zoom level to stop clustering at
+    });
+
     // console.log("stopos length in app return", stops.length);
 
     // Loading State UI
@@ -168,34 +198,77 @@ export default function App() {
     return (
         <View style={{ flex: 1 }}>
             <MapView
-                style={{ flex: 1 }} // Nativewind class for flex
-                provider={PROVIDER_GOOGLE}
-                initialRegion={{
-                    latitude: 53.349805,
-                    longitude: -6.26031,
-                    latitudeDelta: 0.15,
-                    longitudeDelta: 0.15,
-                }}
+                ref={mapRef}
+                style={{ flex: 1 }}
+                scrollEnabled={true}
+                initialRegion={region}
+                onRegionChangeComplete={setRegion}
             >
-                {stops.map((stop) => {
-                    const info = OPERATOR_INFO[stop.operatorId];
+                {points.map((point) => {
+                    if (isPointCluster(point)) {
+                        const size = Math.min(
+                            60,
+                            30 + point.properties.point_count / 2,
+                        );
+
+                        // Render a cluster marker
+                        return (
+                            <Marker
+                                key={`cluster-${point.properties.cluster_id}`}
+                                coordinate={{
+                                    longitude: point.geometry.coordinates[0],
+                                    latitude: point.geometry.coordinates[1],
+                                }}
+                                onPress={() => {
+                                    const expansionRegion =
+                                        point.properties.getExpansionRegion();
+                                    mapRef.current?.animateToRegion(
+                                        expansionRegion,
+                                    );
+                                }}
+                            >
+                                {/* Your cluster component */}
+                                <View
+                                    style={{
+                                        width: size,
+                                        height: size,
+                                        borderRadius: size / 2,
+                                        backgroundColor: "#3D5AFE",
+                                        justifyContent: "center",
+                                        alignItems: "center",
+                                        borderColor: "#fff",
+                                        borderWidth: 2,
+                                        elevation: 4,
+                                        shadowColor: "#000",
+                                        shadowOpacity: 0.3,
+                                        shadowRadius: 4,
+                                        shadowOffset: {
+                                            width: 0,
+                                            height: 2,
+                                        },
+                                    }}
+                                >
+                                    <Text>{point.properties.point_count}</Text>
+                                </View>
+                            </Marker>
+                        );
+                    }
+
+                    // It's a single stop, render the stop marker
                     return (
                         <Marker
-                            key={stop.id}
+                            key={point.properties.stopKey} // The original stop ID
                             coordinate={{
-                                latitude: stop.latitude,
-                                longitude: stop.longitude,
+                                longitude: point.geometry.coordinates[0],
+                                latitude: point.geometry.coordinates[1],
                             }}
-                            title={stop.name}
-                            // description={info.name}
-                            // pinColor={info.pinColor}
+                            title={point.properties.name}
                             onPress={() => {
-                                console.log(stop.id, "marker pressed");
                                 router.push({
                                     pathname: "/selectedStop/[onestop_id]",
                                     params: {
-                                        onestop_id: stop.id,
-                                        stopName: stop.name,
+                                        onestop_id: point.properties.oneStopId,
+                                        stopName: point.properties.name,
                                     },
                                 });
                             }}
@@ -203,7 +276,6 @@ export default function App() {
                     );
                 })}
             </MapView>
-
             {/* Legend overlay using Nativewind */}
             {/* <View className="absolute bottom-6 left-3 bg-white/95 p-3 rounded-xl shadow-lg">
                 <Text className="font-bold text-base mb-2">Legend</Text>
@@ -229,3 +301,53 @@ export default function App() {
         </View>
     );
 }
+
+{
+    /* <View
+    style={{
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        backgroundColor: "#3D5AFE",
+        justifyContent: "center",
+        alignItems: "center",
+        borderColor: "#fff",
+        borderWidth: 2,
+        elevation: 4,
+        shadowColor: "#000",
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+    }}
+>
+    <Text
+        style={{
+            color: "white",
+            fontWeight: "bold",
+            fontSize: 16,
+        }}
+    >
+        {count}
+    </Text>
+</View>; */
+}
+
+// return (
+//     <Marker
+//         key={`stop-${point.id ?? point.properties.operatorId}`}
+//         coordinate={{ latitude: lat, longitude: lng }}
+//         title={point.properties.name}
+//         onPress={() => {
+//             router.push({
+//                 pathname: "/selectedStop/[onestop_id]",
+//                 params: {
+//                     onestop_id: point.properties.operatorId,
+//                     stopName: point.properties.name,
+//                 },
+//             });
+//         }}
+//     />
+// );

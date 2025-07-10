@@ -107,7 +107,7 @@ const useTransportArrivals = () => {
                                 return null;
                             }
 
-                            if (estimatedDepartureDuration > 80) return null
+                            if (estimatedDepartureDuration > 80) return null;
 
                             return {
                                 id: stop.trip.trip_id,
@@ -164,9 +164,22 @@ export default function SelectedStop() {
     if (loading) {
         return (
             <View className="flex-1 justify-center items-center bg-gray-100">
+                <Stack.Screen
+                    options={{
+                        headerShown: true,
+                        header: () => (
+                            // You can make the title dynamic based on the stop ID or fetched data
+                            <CustomHeader
+                                back={true}
+                                header={stopName}
+                                directionDepartsView={true}
+                            />
+                        ),
+                    }}
+                />
                 <ActivityIndicator size="large" color="#3b82f6" />
                 <Text className="mt-4 text-lg text-gray-700">
-                    Loading Dublin Transport Stops...
+                    Loading departures...
                 </Text>
             </View>
         );
@@ -181,6 +194,16 @@ export default function SelectedStop() {
                 </Text>
                 <Text className="text-base text-red-600 text-center">
                     {error}
+                </Text>
+            </View>
+        );
+    }
+
+    if (arrivals.length == 0) {
+        return (
+            <View className="flex-1 justify-top items-center p-5 bg-gray-50">
+                <Text className="text-xl mt-4 font-semibold text-gray-400 mb-2">
+                    No upcoming departures
                 </Text>
             </View>
         );

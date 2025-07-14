@@ -14,13 +14,16 @@ export default function Layout() {
                         back={false}
                     />
                 ),
+                tabBarLabelStyle: {
+                    fontSize: 12, // <-- Increase this value for bigger text
+                },
             }}
         >
             <Tabs.Screen
                 name="index"
                 options={{
                     headerShown: false,
-                    title: "Home",
+                    title: "Map",
                     tabBarIcon: ({ color, size }) => (
                         <FontAwesome5
                             name="map-marked-alt"

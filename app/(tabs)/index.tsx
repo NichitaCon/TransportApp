@@ -6,10 +6,23 @@ import {
     Dimensions,
     Pressable,
     StyleSheet,
+    Modal,
+    TextInput,
+    Button,
+    FlatList,
 } from "react-native";
+import Animated, {
+    useSharedValue,
+    useAnimatedStyle,
+    withSpring,
+    withTiming,
+} from "react-native-reanimated";
 import MapView, { Marker, Region } from "react-native-maps";
 import { isPointCluster, useClusterer } from "react-native-clusterer";
 import { router } from "expo-router";
+import { useDebounce } from "../../hooks/useDebounce";
+import FontAwesome from "@expo/vector-icons/FontAwesome";
+import { useStopSearch } from "~/hooks/useStopSearch";
 
 // --- Configuration ---
 const TRANSITLAND_API_URL = "https://transit.land/api/v2/rest";
@@ -32,34 +45,10 @@ type GeoJSONStop = {
 // --- Helper Hooks ---
 
 /**
- * A custom hook to debounce a value. It will only update the returned value
- * after the input value has not changed for the specified delay.
- * @param value The value to debounce.
- * @param delay The debounce delay in milliseconds.
- * @returns The debounced value.
- */
-const useDebounce = <T,>(value: T, delay: number): T => {
-    const [debouncedValue, setDebouncedValue] = useState<T>(value);
-
-    useEffect(() => {
-        // Set up a timer to update the debounced value after the delay
-        const handler = setTimeout(() => {
-            setDebouncedValue(value);
-        }, delay);
-
-        // Clean up the timer if the value changes before the delay has passed
-        return () => {
-            clearTimeout(handler);
-        };
-    }, [value, delay]);
-
-    return debouncedValue;
-};
-
-/**
  * A custom hook to fetch transport stops based on the visible map region.
  * @param region The current map region.
  */
+
 const useTransportStops = (region: Region | null) => {
     const [stops, setStops] = useState<Map<string, GeoJSONStop>>(new Map());
     const [loading, setLoading] = useState(false);
@@ -137,6 +126,7 @@ const useTransportStops = (region: Region | null) => {
                     "Failed to load transport data. Please try again later.",
                 );
             } finally {
+                console.log("loading = ", loading);
                 setLoading(false);
             }
         };
@@ -155,17 +145,69 @@ const initialRegion: Region = {
 };
 
 const { width, height } = Dimensions.get("window");
+const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+
+// --- START: Key Changes for positioning ---
+// Define the visible height of the search bar when the sheet is "closed".
+// This includes padding and the input field height. Adjust as needed.
+const SEARCH_BAR_VISIBLE_HEIGHT = 145; // e.g., p-4 (16*2) + h-12 (48) + some buffer = 88
+
+// Define the Y positions for the sheet's states
+const SHEET_OPEN_Y = 60; // How far from the top of the screen it should be when open
+const SHEET_CLOSED_Y = SCREEN_HEIGHT - SEARCH_BAR_VISIBLE_HEIGHT;
+// --- END: Key Changes ---
 
 // --- Main App Component ---
 export default function App() {
     const mapRef = useRef<MapView>(null);
+
+    //  ------ //
+    // Stop positions
     const [region, setRegion] = useState<Region>(initialRegion);
     const { stops, loading, error } = useTransportStops(region);
-
     const [points] = useClusterer(stops, { width, height }, region, {
         radius: 40,
         maxZoom: 14,
     });
+
+    //  ------ //
+    // Search
+    const [isSearchVisible, setIsSearchVisible] = useState(false);
+    const [query, setQuery] = useState("");
+    const {
+        searchResults,
+        loading: searchLoading,
+        error: searchError,
+    } = useStopSearch(query);
+
+    // --- Animation State ---
+    // --- START: Key Changes for animation state ---
+    // Initialize the sheet in the "closed" but visible position.
+    const searchSheetY = useSharedValue(SHEET_CLOSED_Y);
+    const isSheetOpen = useSharedValue(false); // Helper to track state
+
+    const searchSheetAnimatedStyle = useAnimatedStyle(() => {
+        return {
+            transform: [{ translateY: searchSheetY.value }],
+        };
+    });
+
+    const openSearchSheet = () => {
+        console.log("opening search sheet");
+        searchSheetY.value = withSpring(SHEET_OPEN_Y, { damping: 15 });
+        isSheetOpen.value = true;
+        setIsSearchVisible(true)
+    };
+
+    const closeSearchSheet = () => {
+        console.log("closing search sheet");
+        searchSheetY.value = withSpring(SHEET_CLOSED_Y, { damping: 255 });
+        isSheetOpen.value = false;
+        setIsSearchVisible(false)
+        setQuery(""); // Clear search on close
+    };
+
+    // --- END: Key Changes ---
 
     return (
         <View style={{ flex: 1 }}>
@@ -176,6 +218,7 @@ export default function App() {
                 onRegionChangeComplete={setRegion}
             >
                 {points.map((point) => {
+
                     // Cluster
                     if (isPointCluster(point)) {
                         const size = Math.min(
@@ -240,23 +283,119 @@ export default function App() {
                     );
                 })}
             </MapView>
-
             {/* Loading Indicator */}
             {loading && (
-                <View className="absolute bottom-10 left-1/2 -translate-x-1/2 items-center justify-center bg-gray-500 flex-row p-2 rounded-2xl">
+                <View className="absolute bottom-44 left-1/2 -translate-x-1/2 items-center justify-center bg-gray-500 flex-row p-2 rounded-2xl">
                     <ActivityIndicator size={30} color="#FFFFFF" />
                     <Text className="text-white text-base">
                         Fetching stops...
                     </Text>
                 </View>
             )}
-
             {/* Error Display */}
             {error && (
                 <View className="absolute top-12 inset-x-5 p-4 bg-red-700 rounded-lg">
                     <Text className="text-white text-base">{error}</Text>
                 </View>
             )}
+
+            <Animated.View
+                className="px-3 py-3"
+                style={[
+                    StyleSheet.absoluteFillObject,
+                    {
+                        backgroundColor: "white",
+                        borderTopLeftRadius: 20,
+                        borderTopRightRadius: 20,
+                        // Add a shadow for better appearance
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: -3 },
+                        shadowOpacity: 0.1,
+                        shadowRadius: 4,
+                        elevation: 5,
+                    },
+                    searchSheetAnimatedStyle,
+                ]}
+            >
+                {/* A handle to indicate it's a draggable sheet */}
+                {/* <View className="w-10 h-1 self-center bg-gray-300 rounded-full my-3" /> */}
+
+                {/* The Pressable now wraps the search bar view. */}
+                {/* It's disabled when the sheet is open to prevent re-triggering. */}
+                <Pressable
+                    onPress={openSearchSheet}
+                >
+                    <View className="flex-row">
+                        {/* search bar */}
+                        <View className="flex-row flex-1 justify-between items-center px-4 rounded-xl bg-gray-200 h-12">
+                            <TextInput
+                                value={query}
+                                onChangeText={setQuery}
+                                onPress={openSearchSheet}
+                                placeholder="Search"
+                                placeholderTextColor="#4B5563"
+                                className="flex-1 h-full"
+                                // Prevent editing when the sheet is closed
+                                // editable={isSheetOpen.value}
+                            />
+                            <FontAwesome
+                                name="search"
+                                size={20}
+                                color="#4B5563"
+                            />
+                        </View>
+                        {/* Close button is only really needed if you want an explicit close action */}
+                        {isSearchVisible && (
+                            <Pressable
+                                onPress={closeSearchSheet}
+                                className="p-2"
+                            >
+                                <FontAwesome
+                                    name="close"
+                                    size={24}
+                                    color="#9CA3AF"
+                                />
+                            </Pressable>
+                        )}
+                    </View>
+                </Pressable>
+
+                <View style={{ flex: 1, paddingTop: 16 }}>
+                    {searchLoading && (
+                        <ActivityIndicator className="mt-6" size="large" />
+                    )}
+                    {searchError && (
+                        <Text className="text-red-500 text-center mt-4">
+                            {searchError}
+                        </Text>
+                    )}
+
+                    <FlatList
+                        data={searchResults}
+                        keyExtractor={(item) => item.properties.stopKey}
+                        renderItem={({ item }) => (
+                            <Pressable
+                                className="px-6 py-4 border-b border-gray-200"
+                                onPress={() => {
+                                    router.push({
+                                        pathname: "/selectedStop/[onestop_id]",
+                                        params: {
+                                            onestop_id:
+                                                item.properties.oneStopId,
+                                            stopName: item.properties.name,
+                                        },
+                                    });
+                                }}
+                            >
+                                <Text className="font-bold text-base">
+                                    {item.properties.name}
+                                </Text>
+                            </Pressable>
+                        )}
+                        contentInset={{ bottom: 50 }}
+                    />
+                </View>
+            </Animated.View>
         </View>
     );
 }

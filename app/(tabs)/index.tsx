@@ -10,6 +10,7 @@ import {
     TextInput,
     Button,
     FlatList,
+    Keyboard,
 } from "react-native";
 import Animated, {
     useSharedValue,
@@ -23,119 +24,7 @@ import { router } from "expo-router";
 import { useDebounce } from "../../hooks/useDebounce";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useStopSearch } from "~/hooks/useStopSearch";
-
-// --- Configuration ---
-const TRANSITLAND_API_URL = "https://transit.land/api/v2/rest";
-
-// --- Type Definitions ---
-type GeoJSONStop = {
-    type: "Feature";
-    id: string;
-    geometry: {
-        type: "Point";
-        coordinates: [number, number]; // [lng, lat]
-    };
-    properties: {
-        name: string;
-        oneStopId: string;
-        stopKey: string;
-    };
-};
-
-// --- Helper Hooks ---
-
-/**
- * A custom hook to fetch transport stops based on the visible map region.
- * @param region The current map region.
- */
-
-const useTransportStops = (region: Region | null) => {
-    const [stops, setStops] = useState<Map<string, GeoJSONStop>>(new Map());
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-
-    const debouncedRegion = useDebounce(region, 500); // 500ms delay
-
-    useEffect(() => {
-        if (!debouncedRegion) {
-            return;
-        }
-
-        const fetchStopsData = async () => {
-            setLoading(true);
-            setError(null);
-
-            // Calculate bounding box from the debounced region
-            const { latitude, longitude, latitudeDelta, longitudeDelta } =
-                debouncedRegion;
-            const minLng = longitude - longitudeDelta / 2;
-            const minLat = latitude - latitudeDelta / 2;
-            const maxLng = longitude + longitudeDelta / 2;
-            const maxLat = latitude + latitudeDelta / 2;
-            const bbox = `${minLng},${minLat},${maxLng},${maxLat}`;
-
-            const key = process.env.EXPO_PUBLIC_TRANSITLAND_KEY;
-            const url = `${TRANSITLAND_API_URL}/stops?bbox=${bbox}&limit=500&api_key=${key}`;
-
-            try {
-                const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error(
-                        `API request failed with status: ${response.status}`,
-                    );
-                }
-                const data = await response.json();
-
-                if (data.stops && Array.isArray(data.stops)) {
-                    const newStops = new Map<string, GeoJSONStop>();
-                    data.stops.forEach((stop: any) => {
-                        const [longitude, latitude] =
-                            stop.geometry?.coordinates || [];
-
-                        // Ensure we have a valid stop with an ID and coordinates
-                        if (stop.id && latitude != null && longitude != null) {
-                            const formattedStop: GeoJSONStop = {
-                                type: "Feature",
-                                id: stop.id, // Use the primary Transitland ID for the map key
-                                geometry: {
-                                    type: "Point",
-                                    coordinates: [longitude, latitude],
-                                },
-                                properties: {
-                                    name: stop.stop_name || "Unnamed Stop",
-                                    oneStopId: stop.onestop_id,
-                                    stopKey: stop.id, // Use the stable ID for React keys
-                                },
-                            };
-                            newStops.set(formattedStop.id, formattedStop);
-                        }
-                    });
-
-                    // Merge new stops with existing ones to accumulate data as user pans
-                    setStops((prevStops) => {
-                        const updatedStops = new Map(prevStops);
-                        newStops.forEach((value, key) => {
-                            updatedStops.set(key, value);
-                        });
-                        return updatedStops;
-                    });
-                }
-            } catch (e) {
-                console.error("Failed to fetch or process stops:", e);
-                setError(
-                    "Failed to load transport data. Please try again later.",
-                );
-            } finally {
-                console.log("loading = ", loading);
-                setLoading(false);
-            }
-        };
-
-        fetchStopsData();
-    }, [debouncedRegion]);
-
-    return { stops: Array.from(stops.values()), loading, error };
-};
+import { useTransportStops } from "~/hooks/useTransportStops";
 
 const initialRegion: Region = {
     latitude: 53.3498,
@@ -147,21 +36,17 @@ const initialRegion: Region = {
 const { width, height } = Dimensions.get("window");
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
-// --- START: Key Changes for positioning ---
-// Define the visible height of the search bar when the sheet is "closed".
-// This includes padding and the input field height. Adjust as needed.
-const SEARCH_BAR_VISIBLE_HEIGHT = 145; // e.g., p-4 (16*2) + h-12 (48) + some buffer = 88
+const SEARCH_BAR_VISIBLE_HEIGHT = 145;
 
-// Define the Y positions for the sheet's states
 const SHEET_OPEN_Y = 60; // How far from the top of the screen it should be when open
 const SHEET_CLOSED_Y = SCREEN_HEIGHT - SEARCH_BAR_VISIBLE_HEIGHT;
-// --- END: Key Changes ---
 
 // --- Main App Component ---
 export default function App() {
     const mapRef = useRef<MapView>(null);
 
     //  ------ //
+
     // Stop positions
     const [region, setRegion] = useState<Region>(initialRegion);
     const { stops, loading, error } = useTransportStops(region);
@@ -171,6 +56,7 @@ export default function App() {
     });
 
     //  ------ //
+
     // Search
     const [isSearchVisible, setIsSearchVisible] = useState(false);
     const [query, setQuery] = useState("");
@@ -180,11 +66,11 @@ export default function App() {
         error: searchError,
     } = useStopSearch(query);
 
-    // --- Animation State ---
-    // --- START: Key Changes for animation state ---
-    // Initialize the sheet in the "closed" but visible position.
+    //  ------ //
+
+    //Animation State
     const searchSheetY = useSharedValue(SHEET_CLOSED_Y);
-    const isSheetOpen = useSharedValue(false); // Helper to track state
+    const isSheetOpen = useSharedValue(false);
 
     const searchSheetAnimatedStyle = useAnimatedStyle(() => {
         return {
@@ -196,18 +82,17 @@ export default function App() {
         console.log("opening search sheet");
         searchSheetY.value = withSpring(SHEET_OPEN_Y, { damping: 15 });
         isSheetOpen.value = true;
-        setIsSearchVisible(true)
+        setIsSearchVisible(true);
     };
 
     const closeSearchSheet = () => {
         console.log("closing search sheet");
+        Keyboard.dismiss();
         searchSheetY.value = withSpring(SHEET_CLOSED_Y, { damping: 255 });
         isSheetOpen.value = false;
-        setIsSearchVisible(false)
-        setQuery(""); // Clear search on close
+        setIsSearchVisible(false);
+        setQuery("");
     };
-
-    // --- END: Key Changes ---
 
     return (
         <View style={{ flex: 1 }}>
@@ -218,7 +103,6 @@ export default function App() {
                 onRegionChangeComplete={setRegion}
             >
                 {points.map((point) => {
-
                     // Cluster
                     if (isPointCluster(point)) {
                         const size = Math.min(
@@ -299,6 +183,7 @@ export default function App() {
                 </View>
             )}
 
+            {/* SEARCH SECTION */}
             <Animated.View
                 className="px-3 py-3"
                 style={[
@@ -307,7 +192,6 @@ export default function App() {
                         backgroundColor: "white",
                         borderTopLeftRadius: 20,
                         borderTopRightRadius: 20,
-                        // Add a shadow for better appearance
                         shadowColor: "#000",
                         shadowOffset: { width: 0, height: -3 },
                         shadowOpacity: 0.1,
@@ -317,14 +201,10 @@ export default function App() {
                     searchSheetAnimatedStyle,
                 ]}
             >
-                {/* A handle to indicate it's a draggable sheet */}
+                {/* A handle to indicate it's a draggable sheet, need to add react-gesture support later */}
                 {/* <View className="w-10 h-1 self-center bg-gray-300 rounded-full my-3" /> */}
 
-                {/* The Pressable now wraps the search bar view. */}
-                {/* It's disabled when the sheet is open to prevent re-triggering. */}
-                <Pressable
-                    onPress={openSearchSheet}
-                >
+                <Pressable onPress={openSearchSheet}>
                     <View className="flex-row">
                         {/* search bar */}
                         <View className="flex-row flex-1 justify-between items-center px-4 rounded-xl bg-gray-200 h-12">
@@ -335,8 +215,6 @@ export default function App() {
                                 placeholder="Search"
                                 placeholderTextColor="#4B5563"
                                 className="flex-1 h-full"
-                                // Prevent editing when the sheet is closed
-                                // editable={isSheetOpen.value}
                             />
                             <FontAwesome
                                 name="search"
@@ -344,7 +222,6 @@ export default function App() {
                                 color="#4B5563"
                             />
                         </View>
-                        {/* Close button is only really needed if you want an explicit close action */}
                         {isSearchVisible && (
                             <Pressable
                                 onPress={closeSearchSheet}

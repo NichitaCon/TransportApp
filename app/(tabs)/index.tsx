@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef } from "react";
 import {
     View,
     Text,
@@ -6,9 +6,7 @@ import {
     Dimensions,
     Pressable,
     StyleSheet,
-    Modal,
     TextInput,
-    Button,
     FlatList,
     Keyboard,
 } from "react-native";
@@ -21,7 +19,6 @@ import Animated, {
 import MapView, { Marker, Region } from "react-native-maps";
 import { isPointCluster, useClusterer } from "react-native-clusterer";
 import { router } from "expo-router";
-import { useDebounce } from "../../hooks/useDebounce";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useStopSearch } from "~/hooks/useStopSearch";
 import { useTransportStops } from "~/hooks/useTransportStops";
@@ -152,7 +149,7 @@ export default function App() {
                                 longitude: point.geometry.coordinates[0],
                                 latitude: point.geometry.coordinates[1],
                             }}
-                            title={point.properties.name}
+                            // title={point.properties.name}
                             onPress={() => {
                                 router.push({
                                     pathname: "/selectedStop/[onestop_id]",
@@ -163,7 +160,22 @@ export default function App() {
                                 });
                             }}
                             style={{ zIndex: 1 }}
-                        />
+                        >
+                            <View
+                                className="p-2 border-2 border-blue-700 bg-white rounded-xl"
+                            >
+                                <FontAwesome name="bus" size={24} color="#3D5AFE" />
+                                {/* <Text
+                                    style={{
+                                        fontWeight: "bold",
+                                        color: "#3D5AFE",
+                                        fontSize: 12,
+                                    }}
+                                >
+                                    {point.properties.stopNum || "11"}
+                                </Text> */}
+                            </View>
+                        </Marker>
                     );
                 })}
             </MapView>
@@ -252,7 +264,7 @@ export default function App() {
                         keyExtractor={(item) => item.properties.stopKey}
                         renderItem={({ item }) => (
                             <Pressable
-                                className="px-6 py-4 border-b border-gray-200"
+                                className="px-4 py-4 border-b border-gray-200"
                                 onPress={() => {
                                     router.push({
                                         pathname: "/selectedStop/[onestop_id]",
@@ -264,9 +276,22 @@ export default function App() {
                                     });
                                 }}
                             >
-                                <Text className="font-bold text-base">
-                                    {item.properties.name}
-                                </Text>
+                                {item.properties.stopNum ? (
+                                    <View className="flex-row gap-4 items-center">
+                                        <View className="bg-yellow-400 p-2 px-3 rounded-xl">
+                                            <Text className="font-bold text-xl">
+                                                {item.properties.stopNum}
+                                            </Text>
+                                        </View>
+                                        <Text className="font-medium text-xl">
+                                            {item.properties.name}
+                                        </Text>
+                                    </View>
+                                ) : (
+                                    <Text className="font-medium text-xl">
+                                        {item.properties.name}
+                                    </Text>
+                                )}
                             </Pressable>
                         )}
                         contentInset={{ bottom: 50 }}

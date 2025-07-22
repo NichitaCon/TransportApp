@@ -10,6 +10,7 @@ type GeoJSONStop = {
     };
     properties: {
         name: string;
+        stopNum: String;
         oneStopId: string;
         stopKey: string;
     };
@@ -38,7 +39,7 @@ export const useStopSearch = (query: string) => {
             setError(null);
             console.log(`Searching for: "${debouncedQuery}"`);
 
-            const url = `${TRANSITLAND_API_URL}/stops?search=${debouncedQuery}&operator_onestop_id=o-gc-dublinbus,o-ey-BusEireann,o-gc-luas,o-gc-irishrail&limit=50&api_key=${key}`;
+            const url = `${TRANSITLAND_API_URL}/stops?search=${debouncedQuery}&served_by_onestop_ids=o-gc7-dublinbus,o-ey-BusEireann,o-gc7x-luas,o-gc-irishrail&limit=50&api_key=${key}`;
 
             try {
                 const response = await fetch(url);
@@ -58,6 +59,7 @@ export const useStopSearch = (query: string) => {
                             },
                             properties: {
                                 name: stop.stop_name || "Unnamed Stop",
+                                stopNum: stop.stop_code === "0" ? null : stop.stop_code,
                                 oneStopId: stop.onestop_id,
                                 stopKey: stop.id,
                             },
@@ -65,6 +67,7 @@ export const useStopSearch = (query: string) => {
                     );
                     setSearchResults(formattedResults);
                 }
+                console.log("Parsed", searchResults.length, "search stop(s)")
             } catch (e: any) {
                 console.error("Failed to search for stops:", e);
                 setError("Failed to search. Please try again.");

@@ -12,6 +12,7 @@ import { ScreenContent } from "~/components/ScreenContent";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useState, useEffect } from "react";
 import CustomHeader from "~/components/CustomHeader";
+import { useSavedStops } from "~/store/savedStopStore";
 
 type Arrival = {
     id: string;
@@ -156,8 +157,17 @@ const useTransportArrivals = () => {
 };
 
 export default function SelectedStop() {
-    const { stopName } = useLocalSearchParams();
+    const { stopName, onestop_id, backTo } = useLocalSearchParams();
     const { arrivals, loading, error } = useTransportArrivals();
+    const { toggle, isSaved } = useSavedStops();
+
+    const handleBack = () => {
+        if (backTo === "saved") {
+            router.replace("/saved");
+        } else {
+            router.back();
+        }
+    };
     // console.log(onestop_id, stopName);
 
     // Loading State UI
@@ -170,9 +180,12 @@ export default function SelectedStop() {
                         header: () => (
                             // You can make the title dynamic based on the stop ID or fetched data
                             <CustomHeader
-                                back={true}
+                                back={handleBack}
                                 header={stopName}
                                 directionDepartsView={true}
+                                isSaved={isSaved(onestop_id)}
+                                savedToggle={() => toggle(onestop_id, stopName)}
+
                             />
                         ),
                     }}
@@ -189,6 +202,21 @@ export default function SelectedStop() {
     if (error) {
         return (
             <View className="flex-1 justify-center items-center p-5 bg-red-50">
+                <Stack.Screen
+                    options={{
+                        headerShown: true,
+                        header: () => (
+
+                            <CustomHeader
+                                back={handleBack}
+                                header={stopName}
+                                directionDepartsView={true}
+                                isSaved={isSaved(onestop_id)}
+                                savedToggle={() => toggle(onestop_id, stopName)}
+                            />
+                        ),
+                    }}
+                />
                 <Text className="text-xl font-semibold text-red-700 mb-2">
                     An Error Occurred
                 </Text>
@@ -202,6 +230,21 @@ export default function SelectedStop() {
     if (arrivals.length == 0) {
         return (
             <View className="flex-1 justify-top items-center p-5 bg-gray-50">
+                <Stack.Screen
+                    options={{
+                        headerShown: true,
+                        header: () => (
+
+                            <CustomHeader
+                                back={handleBack}
+                                header={stopName}
+                                directionDepartsView={true}
+                                isSaved={isSaved(onestop_id)}
+                                savedToggle={() => toggle(onestop_id, stopName)}
+                            />
+                        ),
+                    }}
+                />
                 <Text className="text-xl mt-4 font-semibold text-gray-400 mb-2">
                     No upcoming departures
                 </Text>
@@ -215,11 +258,13 @@ export default function SelectedStop() {
                 options={{
                     headerShown: true,
                     header: () => (
-                        // You can make the title dynamic based on the stop ID or fetched data
+
                         <CustomHeader
-                            back={true}
+                            back={handleBack}
                             header={stopName}
                             directionDepartsView={true}
+                            isSaved={isSaved(onestop_id)}
+                            savedToggle={() => toggle(onestop_id, stopName)}
                         />
                     ),
                 }}
@@ -231,12 +276,12 @@ export default function SelectedStop() {
                     className=""
                     data={arrivals}
                     renderItem={({ item }) => (
-                        <View className="flex-row items-center justify-between mb-8">
+                        <View className="flex-row items-center justify-between mb-8 px-1">
                             <Text className="text-2xl font-poppins-medium">
                                 {item.tripHeadSign}
                             </Text>
 
-                            <Text className="text-2xl mr-[110]">
+                            <Text className="text-2xl">
                                 {item.estimatedDepartureDuration} Min
                             </Text>
                         </View>

@@ -5,11 +5,12 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 type SavedStop = {
     id: string;
     name: string;
+    stopNum: string;
 };
 
 type SavedStopsStore = {
     saved: SavedStop[];
-    toggle: (id: string, name: string) => void;
+    toggle: (id: string, name: string, stopNum: string) => void;
     isSaved: (id: string) => boolean;
     clear: () => void;
 };
@@ -18,13 +19,13 @@ export const useSavedStops = create<SavedStopsStore>()(
     persist(
         (set, get) => ({
             saved: [],
-            toggle: (id, name) => {
+            toggle: (id, name, stopNum) => {
                 console.log("saved toggle pressed for stop_id:", id);
                 const current = get().saved;
                 const exists = current.some((s) => s.id === id);
                 const updated = exists
                     ? current.filter((s) => s.id !== id)
-                    : [...current, { id, name }];
+                    : [...current, { id, name, stopNum }];
                 set({ saved: updated });
             },
             isSaved: (id) => get().saved.some((s) => s.id === id),
@@ -32,7 +33,7 @@ export const useSavedStops = create<SavedStopsStore>()(
         }),
         {
             name: "saved-stops",
-            storage: {  
+            storage: {
                 getItem: async (key) => {
                     const value = await AsyncStorage.getItem(key);
                     return value ? JSON.parse(value) : null;

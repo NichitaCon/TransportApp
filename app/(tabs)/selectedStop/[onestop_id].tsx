@@ -13,153 +13,13 @@ import { router, useLocalSearchParams } from "expo-router";
 import React, { useState, useEffect } from "react";
 import CustomHeader from "~/components/CustomHeader";
 import { useSavedStops } from "~/store/savedStopStore";
-
-type Arrival = {
-    id: string;
-    scheduledArrival: string;
-    scheduledDepart: string;
-    estimatedArrival: string;
-    estimatedDeparture: string;
-    estimatedDepartureDuration: number;
-    scheduleRelationship: string;
-    tripHeadSign: string;
-};
-
-const useTransportArrivals = () => {
-    const [arrivals, setArrivals] = useState<Arrival[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const { onestop_id } = useLocalSearchParams();
-
-    useEffect(() => {
-        // We define the async function inside useEffect to avoid it being recreated on every render.
-        const fetchArrivalsData = async () => {
-            setLoading(true);
-            setError(null);
-            const key = process.env.EXPO_PUBLIC_TRANSITLAND_KEY;
-            // console.warn(key)
-
-            const url = `https://transit.land/api/v2/rest/stops/${onestop_id}/departures?api_key=${key}&limit=15`;
-
-            // console.log("Fetching stops from:", url);
-
-            try {
-                // For production: uncomment the fetch below
-                const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error(
-                        `API request failed with status: ${response.status}`,
-                    );
-                }
-                const data = await response.json();
-
-                // For development: load local JSON instead of fetching from API
-                // const data = require("~/kilbarrackDepartures.json");
-
-                // console.log(JSON.stringify(data.stops,null,2))
-                console.log("Attempting to get arrivals");
-                console.log(
-                    "length of arrivals is",
-                    data.stops[0].departures.length,
-                );
-
-                // Minor optimization: check for stops array before mapping
-                if (data.stops && Array.isArray(data.stops)) {
-                    console.log("passed first boolean");
-
-                    const formattedArrivals = data.stops[0].departures
-                        .map((stop) => {
-                            console.log("returned an object");
-                            const departureTimeStr =
-                                stop.departure.estimated ||
-                                stop.departure.scheduled;
-                            console.log("departtimestr", departureTimeStr);
-                            const now = new Date();
-                            const [hours, minutes, seconds] = departureTimeStr
-                                .split(":")
-                                .map(Number);
-                            const departureTime = new Date(
-                                now.getFullYear(),
-                                now.getMonth(),
-                                now.getDate(),
-                                hours,
-                                minutes,
-                                seconds,
-                            );
-                            // If the departure time has already passed today, assume it's for tomorrow
-                            if (departureTime < now) {
-                                departureTime.setDate(
-                                    departureTime.getDate() + 1,
-                                );
-                            }
-                            const estimatedDepartureDuration = Math.round(
-                                (departureTime - now) / 60000,
-                            );
-
-                            console.warn(
-                                "estimatedDepartureDuration",
-                                estimatedDepartureDuration,
-                            );
-
-                            if (stop.trip.schedule_relationship == "STATIC") {
-                                console.log(
-                                    "STATIC DEPARTURE, EJECTED FROM FORMATTED ARRIVALS",
-                                );
-                                return null;
-                            }
-
-                            if (estimatedDepartureDuration > 80) return null;
-
-                            return {
-                                id: stop.trip.trip_id,
-                                scheduledArrival: stop.arrival.scheduled,
-                                scheduledDepart: stop.departure.scheduled,
-                                estimatedArrival: stop.arrival.estimated,
-                                estimatedDeparture: stop.departure.estimated,
-                                estimatedDepartureDuration,
-                                scheduleRelationship:
-                                    stop.trip.schedule_relationship,
-                                tripHeadSign: stop.trip.trip_headsign,
-                            };
-                        })
-                        .filter(Boolean) // removes nulls
-                        .sort(
-                            (a, b) =>
-                                a.estimatedDepartureDuration -
-                                b.estimatedDepartureDuration,
-                        );
-                    setArrivals(formattedArrivals);
-                    console.log(
-                        `Successfully formatted ${formattedArrivals.length} arrivals.`,
-                    );
-                    // console.log(
-                    //     "formatted stops",
-                    //     JSON.stringify(formattedArrivals, null, 2),
-                    // );
-                } else {
-                    setArrivals([]);
-                    console.warn("No arrivals found in the API response.");
-                }
-            } catch (e) {
-                console.error("Failed to fetch or process arrivals:", e);
-                setError(
-                    "Failed to load transport data. Please try again later.",
-                );
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchArrivalsData();
-    }, [onestop_id]); // Empty dependency array ensures this runs only once.
-
-    return { arrivals, loading, error };
-};
+import { useTransportArrivals } from "~/hooks/useTransportArrivals";
 
 export default function SelectedStop() {
-    const { stopName, onestop_id, backTo } = useLocalSearchParams();
-    const { arrivals, loading, error } = useTransportArrivals();
+    const { stopName, stopNum, onestop_id, backTo } = useLocalSearchParams();
+    const { arrivals, loading, error } = useTransportArrivals(onestop_id);
     const { toggle, isSaved } = useSavedStops();
+    console.log("stopNum:", stopNum, "for", stopName);
 
     const handleBack = () => {
         if (backTo === "saved") {
@@ -184,8 +44,7 @@ export default function SelectedStop() {
                                 header={stopName}
                                 directionDepartsView={true}
                                 isSaved={isSaved(onestop_id)}
-                                savedToggle={() => toggle(onestop_id, stopName)}
-
+                                savedToggle={() => toggle(onestop_id, stopName, stopNum)}
                             />
                         ),
                     }}
@@ -206,13 +65,12 @@ export default function SelectedStop() {
                     options={{
                         headerShown: true,
                         header: () => (
-
                             <CustomHeader
                                 back={handleBack}
                                 header={stopName}
                                 directionDepartsView={true}
                                 isSaved={isSaved(onestop_id)}
-                                savedToggle={() => toggle(onestop_id, stopName)}
+                                savedToggle={() => toggle(onestop_id, stopName, stopNum)}
                             />
                         ),
                     }}
@@ -234,13 +92,12 @@ export default function SelectedStop() {
                     options={{
                         headerShown: true,
                         header: () => (
-
                             <CustomHeader
                                 back={handleBack}
                                 header={stopName}
                                 directionDepartsView={true}
                                 isSaved={isSaved(onestop_id)}
-                                savedToggle={() => toggle(onestop_id, stopName)}
+                                savedToggle={() => toggle(onestop_id, stopName, stopNum)}
                             />
                         ),
                     }}
@@ -258,31 +115,42 @@ export default function SelectedStop() {
                 options={{
                     headerShown: true,
                     header: () => (
-
                         <CustomHeader
                             back={handleBack}
                             header={stopName}
                             directionDepartsView={true}
                             isSaved={isSaved(onestop_id)}
-                            savedToggle={() => toggle(onestop_id, stopName)}
+                            savedToggle={() =>
+                                toggle(onestop_id, stopName, stopNum)
+                            }
                         />
                     ),
                 }}
             />
 
             <Container>
-                {/* <Text>THERE IS AN ISSUE WHERE THE DEPARTURES SEEM TO BE DOUBLED, might be an issue with creating an object for scheduled AND estimated time</Text> */}
                 <FlatList
                     className=""
                     data={arrivals}
                     renderItem={({ item }) => (
                         <View className="flex-row items-center justify-between mb-8 px-1">
-                            <Text className="text-2xl font-poppins-medium">
-                                {item.tripHeadSign}
-                            </Text>
+                            {stopNum !== undefined && stopNum !== "0" ? (
+                                <View className="gap-1">
+                                    <Text className="text-2xl font-poppins-medium">
+                                        {item.tripBusHeadSign}
+                                    </Text>
+                                    <Text>{item.tripHeadSign}</Text>
+                                </View>
+                            ) : (
+                                <Text className="text-2xl font-poppins-medium">
+                                    {item.tripHeadSign}
+                                </Text>
+                            )}
 
                             <Text className="text-2xl">
-                                {item.estimatedDepartureDuration} Min
+                                {item.estimatedDepartureDuration === 0
+                                    ? "Now"
+                                    : `${item.estimatedDepartureDuration} Min`}
                             </Text>
                         </View>
                     )}

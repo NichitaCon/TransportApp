@@ -12,6 +12,8 @@ type GeoJSONStop = {
     };
     properties: {
         name: string;
+        vehicleType: string;
+        stopCode: string;
         oneStopId: string;
         stopKey: string;
     };
@@ -65,18 +67,26 @@ export const useTransportStops = (region: Region | null) => {
                         const [longitude, latitude] =
                             stop.geometry?.coordinates || [];
 
+                        let vehicleType = "unknown";
+                        if (stop.stop_code != 0) {
+                            vehicleType = "bus";
+                        }
+
                         // Ensure we have a valid stop with an ID and coordinates
                         if (stop.id && latitude != null && longitude != null) {
                             const formattedStop: GeoJSONStop = {
                                 type: "Feature",
-                                id: stop.id, // Use the primary Transitland ID for the map key
+                                id: stop.id,
                                 geometry: {
                                     type: "Point",
                                     coordinates: [longitude, latitude],
                                 },
                                 properties: {
                                     name: stop.stop_name || "Unnamed Stop",
+                                    vehicleType: vehicleType,
+                                    stopCode: stop.stop_code || "Unavailable",
                                     oneStopId: stop.onestop_id,
+
                                     stopKey: stop.id, // Use the stable ID for React keys
                                 },
                             };
@@ -90,6 +100,17 @@ export const useTransportStops = (region: Region | null) => {
                         newStops.forEach((value, key) => {
                             updatedStops.set(key, value);
                         });
+                        // OPTIMIZE to not store too many stops, because ram usage goes crazy
+                        if (updatedStops.size > 2000) {
+                            // Remove oldest stops
+                            console.warn(
+                                "Stops > 2000, duping 1000 stops to preserve ram",
+                            );
+                            const keys = Array.from(updatedStops.keys());
+                            for (let i = 0; i < updatedStops.size - 1000; i++) {
+                                updatedStops.delete(keys[i]);
+                            }
+                        }
                         return updatedStops;
                     });
                 }

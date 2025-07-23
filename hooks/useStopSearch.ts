@@ -59,15 +59,26 @@ export const useStopSearch = (query: string) => {
                             },
                             properties: {
                                 name: stop.stop_name || "Unnamed Stop",
-                                stopNum: stop.stop_code === "0" ? null : stop.stop_code,
+                                stopNum:
+                                    stop.stop_code === "0"
+                                        ? null
+                                        : stop.stop_code,
                                 oneStopId: stop.onestop_id,
                                 stopKey: stop.id,
                             },
                         }),
                     );
+                    // Sort so non bus stops (no stopNum) come first
+                    formattedResults.sort((a, b) => {
+                        if (!a.properties.stopNum && b.properties.stopNum)
+                            return -1;
+                        if (a.properties.stopNum && !b.properties.stopNum)
+                            return 1;
+                        return 0;
+                    });
                     setSearchResults(formattedResults);
                 }
-                console.log("Parsed", searchResults.length, "search stop(s)")
+                console.log("Parsed", searchResults.length, "search stop(s)");
             } catch (e: any) {
                 console.error("Failed to search for stops:", e);
                 setError("Failed to search. Please try again.");

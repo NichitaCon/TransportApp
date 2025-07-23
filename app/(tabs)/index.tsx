@@ -22,6 +22,7 @@ import { router } from "expo-router";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useStopSearch } from "~/hooks/useStopSearch";
 import { useTransportStops } from "~/hooks/useTransportStops";
+import ClusterMarker from "~/components/ClusterMarker";
 
 const initialRegion: Region = {
     latitude: 53.3498,
@@ -77,7 +78,7 @@ export default function App() {
 
     const openSearchSheet = () => {
         console.log("opening search sheet");
-        searchSheetY.value = withSpring(SHEET_OPEN_Y, { damping: 15 });
+        searchSheetY.value = withSpring(SHEET_OPEN_Y, { damping: 153 });
         isSheetOpen.value = true;
         setIsSearchVisible(true);
     };
@@ -107,37 +108,11 @@ export default function App() {
                             30 + point.properties.point_count / 2,
                         );
                         return (
-                            <Marker
+                            <ClusterMarker
                                 key={`cluster-${point.properties.cluster_id}`}
-                                coordinate={{
-                                    longitude: point.geometry.coordinates[0],
-                                    latitude: point.geometry.coordinates[1],
-                                }}
-                                onPress={() => {
-                                    const expansionRegion =
-                                        point.properties.getExpansionRegion();
-                                    mapRef.current?.animateToRegion(
-                                        expansionRegion,
-                                        300,
-                                    );
-                                }}
-                                style={{ zIndex: 2 }}
-                            >
-                                <View
-                                    style={[
-                                        styles.clusterContainer,
-                                        {
-                                            width: size,
-                                            height: size,
-                                            borderRadius: size / 2,
-                                        },
-                                    ]}
-                                >
-                                    <Text style={styles.clusterText}>
-                                        {point.properties.point_count}
-                                    </Text>
-                                </View>
-                            </Marker>
+                                point={point}
+                                mapRef={mapRef}
+                            />
                         );
                     }
 
@@ -156,36 +131,45 @@ export default function App() {
                                     params: {
                                         onestop_id: point.properties.oneStopId,
                                         stopName: point.properties.name,
+                                        stopNum: point.properties.stopCode,
                                     },
                                 });
                             }}
                             style={{ zIndex: 1 }}
                         >
-                            <View
-                                className="p-2 border-2 border-blue-700 bg-white rounded-xl"
-                            >
-                                <FontAwesome name="bus" size={24} color="#3D5AFE" />
-                                {/* <Text
-                                    style={{
-                                        fontWeight: "bold",
-                                        color: "#3D5AFE",
-                                        fontSize: 12,
-                                    }}
-                                >
-                                    {point.properties.stopNum || "11"}
-                                </Text> */}
-                            </View>
+                            {point.properties.vehicleType === "bus" ? (
+                                point.properties.stopCode !== "Unavailable" ? (
+                                    <View className="p-2 bg-yellow-400 rounded-xl items-center">
+                                        <FontAwesome
+                                            name="bus"
+                                            size={24}
+                                            color="#fff"
+                                        />
+                                        <Text className="text-white pt-2 font-semibold">
+                                            {point.properties.stopCode || ""}
+                                        </Text>
+                                    </View>
+                                ) : null
+                            ) : (
+                                <View className="p-3 bg-blue-700 rounded-xl items-center">
+                                    <FontAwesome
+                                        name="train"
+                                        size={24}
+                                        color="#fff"
+                                    />
+                                    {/* <Text className="text-white pt-2">
+                                        {point.properties.stopNum || ""}
+                                    </Text> */}
+                                </View>
+                            )}
                         </Marker>
                     );
                 })}
             </MapView>
             {/* Loading Indicator */}
             {loading && (
-                <View className="absolute bottom-44 left-1/2 -translate-x-1/2 items-center justify-center bg-gray-500 flex-row p-2 rounded-2xl">
-                    <ActivityIndicator size={30} color="#FFFFFF" />
-                    <Text className="text-white text-base">
-                        Fetching stops...
-                    </Text>
+                <View className="absolute top-12 right-4 items-center justify-center  bg-gray-300 flex-row p-2 rounded-2xl">
+                    <ActivityIndicator size={30} color="black" />
                 </View>
             )}
             {/* Error Display */}
@@ -250,6 +234,13 @@ export default function App() {
                 </Pressable>
 
                 <View style={{ flex: 1, paddingTop: 16 }}>
+                    {query.length < 2 && (
+                        <View className="items-center flex-1">
+                            <Text className="text-gray-600">
+                                Search for stop names or bus code
+                            </Text>
+                        </View>
+                    )}
                     {searchLoading && (
                         <ActivityIndicator className="mt-6" size="large" />
                     )}
@@ -264,7 +255,7 @@ export default function App() {
                         keyExtractor={(item) => item.properties.stopKey}
                         renderItem={({ item }) => (
                             <Pressable
-                                className="px-4 py-4 border-b border-gray-200"
+                                className="px-4 py-3 border-b border-gray-200"
                                 onPress={() => {
                                     router.push({
                                         pathname: "/selectedStop/[onestop_id]",
@@ -272,30 +263,59 @@ export default function App() {
                                             onestop_id:
                                                 item.properties.oneStopId,
                                             stopName: item.properties.name,
+                                            stopNum: item.properties.stopNum,
                                         },
                                     });
                                 }}
                             >
                                 {item.properties.stopNum ? (
-                                    <View className="flex-row gap-4 items-center">
-                                        <View className="bg-yellow-400 p-2 px-3 rounded-xl">
-                                            <Text className="font-bold text-xl">
-                                                {item.properties.stopNum}
-                                            </Text>
+                                    <View className="flex-row items-center gap-4">
+                                        <View className="p-3 bg-yellow-400 rounded-xl items-center">
+                                            <FontAwesome
+                                                name="bus"
+                                                size={24}
+                                                color="#fff"
+                                            />
+                                            {/* <Text className="text-white pt-2">
+                                        {point.properties.stopNum || ""}
+                                        </Text> */}
+                                        </View>
+                                        <Text className="font-medium text-xl">
+                                            {item.properties.stopNum},{" "}
+                                            {item.properties.name}
+                                        </Text>
+                                    </View>
+                                ) : (
+                                    <View className="flex-row items-center gap-4">
+                                        <View className="p-3 bg-blue-700 rounded-xl items-center">
+                                            <FontAwesome
+                                                name="train"
+                                                size={24}
+                                                color="#fff"
+                                            />
+                                            {/* <Text className="text-white pt-2">
+                                        {point.properties.stopNum || ""}
+                                        </Text> */}
                                         </View>
                                         <Text className="font-medium text-xl">
                                             {item.properties.name}
                                         </Text>
                                     </View>
-                                ) : (
-                                    <Text className="font-medium text-xl">
-                                        {item.properties.name}
-                                    </Text>
                                 )}
                             </Pressable>
                         )}
                         contentInset={{ bottom: 50 }}
                     />
+
+                    {/* {
+                        query.length > 2 &&
+                        searchResults.length === 0 && (
+                            <View className="flex-1 justify-start items-start">
+                                <Text className="text-red-600 mb-44">
+                                    No results :
+                                </Text>
+                            </View>
+                        )} */}
                 </View>
             </Animated.View>
         </View>

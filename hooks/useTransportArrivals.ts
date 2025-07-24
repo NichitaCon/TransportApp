@@ -23,12 +23,11 @@ export const useTransportArrivals = (onestop_id:string) => {
         const fetchArrivalsData = async () => {
             setLoading(true);
             setError(null);
+                console.log("Attempting to get arrivals for onestop:", onestop_id);
             const key = process.env.EXPO_PUBLIC_TRANSITLAND_KEY;
-            // console.warn(key)
+
 
             const url = `https://transit.land/api/v2/rest/stops/${onestop_id}/departures?api_key=${key}&limit=15`;
-
-            // console.log("Fetching stops from:", url);
 
             try {
                 // For production: uncomment the fetch below
@@ -44,7 +43,6 @@ export const useTransportArrivals = (onestop_id:string) => {
                 // const data = require("~/kilbarrackDepartures.json");
 
                 // console.log(JSON.stringify(data.stops,null,2))
-                console.log("Attempting to get arrivals");
                 console.log(
                     "length of arrivals is",
                     data.stops[0].departures.length,
@@ -52,15 +50,15 @@ export const useTransportArrivals = (onestop_id:string) => {
 
                 // Minor optimization: check for stops array before mapping
                 if (data.stops && Array.isArray(data.stops)) {
-                    console.log("passed first boolean");
+                    // console.log("passed first boolean");
 
                     const formattedArrivals = data.stops[0].departures
                         .map((stop) => {
-                            console.log("returned an object");
+                            // console.log("returned an object");
                             const departureTimeStr =
                                 stop.departure.estimated ||
                                 stop.departure.scheduled;
-                            console.log("departtimestr", departureTimeStr);
+                            // console.log("departtimestr", departureTimeStr);
                             const now = new Date();
                             const [hours, minutes, seconds] = departureTimeStr
                                 .split(":")
@@ -83,15 +81,15 @@ export const useTransportArrivals = (onestop_id:string) => {
                                 (departureTime - now) / 60000,
                             );
 
-                            console.warn(
-                                "estimatedDepartureDuration",
-                                estimatedDepartureDuration,
-                            );
+                            // console.warn(
+                            //     "estimatedDepartureDuration",
+                            //     estimatedDepartureDuration,
+                            // );
 
                             if (stop.trip.schedule_relationship == "STATIC") {
-                                console.log(
-                                    "STATIC DEPARTURE, EJECTED FROM FORMATTED ARRIVALS",
-                                );
+                                // console.log(
+                                //     "STATIC DEPARTURE, EJECTED FROM FORMATTED ARRIVALS",
+                                // );
                                 return null;
                             }
 

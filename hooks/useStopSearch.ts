@@ -27,16 +27,15 @@ export const useStopSearch = (query: string) => {
     const debouncedQuery = useDebounce(query, 500); // 500ms delay
 
     useEffect(() => {
-        // Only search if the debounced query is not empty
-        // dont search short strings
-        if (debouncedQuery.length < 2) {
-            setSearchResults([]);
-            return;
-        }
-
         const searchForStops = async () => {
             setLoading(true);
             setError(null);
+            // Only search if the debounced query is not empty
+            // dont search short strings
+            if (debouncedQuery.length < 2) {
+                setSearchResults([]);
+                return;
+            }
             console.log(`Searching for: "${debouncedQuery}"`);
 
             const url = `${TRANSITLAND_API_URL}/stops?search=${debouncedQuery}&served_by_onestop_ids=o-gc7-dublinbus,o-ey-BusEireann,o-gc7x-luas,o-gc-irishrail&limit=50&api_key=${key}`;

@@ -101,13 +101,13 @@ export const useTransportStops = (region: Region | null) => {
                             updatedStops.set(key, value);
                         });
                         // OPTIMIZE to not store too many stops, because ram usage goes crazy
-                        if (updatedStops.size > 2000) {
+                        if (updatedStops.size > 1200) {
                             // Remove oldest stops
                             console.warn(
                                 "Stops > 2000, duping 1000 stops to preserve ram",
                             );
                             const keys = Array.from(updatedStops.keys());
-                            for (let i = 0; i < updatedStops.size - 1000; i++) {
+                            for (let i = 0; i < updatedStops.size - 500; i++) {
                                 updatedStops.delete(keys[i]);
                             }
                         }
@@ -120,7 +120,6 @@ export const useTransportStops = (region: Region | null) => {
                     "Failed to load transport data. Please try again later.",
                 );
             } finally {
-                console.log("loading = ", loading);
                 setLoading(false);
             }
         };

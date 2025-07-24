@@ -212,11 +212,16 @@ export default function App() {
                                 placeholderTextColor="#4B5563"
                                 className="flex-1 h-full"
                             />
-                            <FontAwesome
-                                name="search"
-                                size={20}
-                                color="#4B5563"
-                            />
+                            {searchLoading && query.length > 2 ? (
+                                <ActivityIndicator size={20} color="#4B5563" />
+                            ) : (
+                                <FontAwesome
+                                    name="search"
+                                    size={20}
+                                    color="#4B5563"
+                                />
+                            )}
+                            
                         </View>
                         {isSearchVisible && (
                             <Pressable
@@ -233,7 +238,8 @@ export default function App() {
                     </View>
                 </Pressable>
 
-                <View style={{ flex: 1, paddingTop: 16 }}>
+                <View style={{ flex: 1, paddingTop: 8 }}>
+                    {/* Conditional rendering couldve been done way better here but im tired :( sorrreey */}
                     {query.length < 2 && (
                         <View className="items-center flex-1">
                             <Text className="text-gray-600">
@@ -241,71 +247,72 @@ export default function App() {
                             </Text>
                         </View>
                     )}
-                    {searchLoading && (
-                        <ActivityIndicator className="mt-6" size="large" />
-                    )}
+                    {/* {searchLoading && query.length > 2 && <SearchSkeleton />} */}
                     {searchError && (
                         <Text className="text-red-500 text-center mt-4">
                             {searchError}
                         </Text>
                     )}
-
-                    <FlatList
-                        data={searchResults}
-                        keyExtractor={(item) => item.properties.stopKey}
-                        renderItem={({ item }) => (
-                            <Pressable
-                                className="px-4 py-3 border-b border-gray-200"
-                                onPress={() => {
-                                    router.push({
-                                        pathname: "/selectedStop/[onestop_id]",
-                                        params: {
-                                            onestop_id:
-                                                item.properties.oneStopId,
-                                            stopName: item.properties.name,
-                                            stopNum: item.properties.stopNum,
-                                        },
-                                    });
-                                }}
-                            >
-                                {item.properties.stopNum ? (
-                                    <View className="flex-row items-center gap-4">
-                                        <View className="p-3 bg-yellow-400 rounded-xl items-center">
-                                            <FontAwesome
-                                                name="bus"
-                                                size={24}
-                                                color="#fff"
-                                            />
-                                            {/* <Text className="text-white pt-2">
+                    {query.length > 2 && !searchLoading && (
+                        <FlatList
+                            data={searchResults}
+                            keyExtractor={(item) => item.properties.stopKey}
+                            renderItem={({ item }) => (
+                                <Pressable
+                                    className="px-4 py-3 border-b border-gray-200"
+                                    onPress={() => {
+                                        router.push({
+                                            pathname:
+                                                "/selectedStop/[onestop_id]",
+                                            params: {
+                                                onestop_id:
+                                                    item.properties.oneStopId,
+                                                stopName: item.properties.name,
+                                                stopNum:
+                                                    item.properties.stopNum,
+                                            },
+                                        });
+                                    }}
+                                >
+                                    {item.properties.stopNum ? (
+                                        <View className="flex-row items-center gap-4">
+                                            <View className="p-3 bg-yellow-400 rounded-xl items-center">
+                                                <FontAwesome
+                                                    name="bus"
+                                                    size={24}
+                                                    color="#fff"
+                                                />
+                                                {/* <Text className="text-white pt-2">
                                         {point.properties.stopNum || ""}
                                         </Text> */}
+                                            </View>
+                                            <Text className="font-medium text-xl">
+                                                {item.properties.stopNum},{" "}
+                                                {item.properties.name}
+                                            </Text>
                                         </View>
-                                        <Text className="font-medium text-xl">
-                                            {item.properties.stopNum},{" "}
-                                            {item.properties.name}
-                                        </Text>
-                                    </View>
-                                ) : (
-                                    <View className="flex-row items-center gap-4">
-                                        <View className="p-3 bg-blue-700 rounded-xl items-center">
-                                            <FontAwesome
-                                                name="train"
-                                                size={24}
-                                                color="#fff"
-                                            />
-                                            {/* <Text className="text-white pt-2">
+                                    ) : (
+                                        <View className="flex-row items-center gap-4">
+                                            <View className="p-3 bg-blue-700 rounded-xl items-center">
+                                                <FontAwesome
+                                                    name="train"
+                                                    size={24}
+                                                    color="#fff"
+                                                />
+                                                {/* <Text className="text-white pt-2">
                                         {point.properties.stopNum || ""}
                                         </Text> */}
+                                            </View>
+                                            <Text className="font-medium text-xl">
+                                                {item.properties.name}
+                                            </Text>
                                         </View>
-                                        <Text className="font-medium text-xl">
-                                            {item.properties.name}
-                                        </Text>
-                                    </View>
-                                )}
-                            </Pressable>
-                        )}
-                        contentInset={{ bottom: 50 }}
-                    />
+                                    )}
+                                </Pressable>
+                            )}
+                            contentInset={{ bottom: 50 }}
+                        />
+                    )}
 
                     {/* {
                         query.length > 2 &&

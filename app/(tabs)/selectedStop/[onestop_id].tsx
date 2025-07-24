@@ -14,12 +14,13 @@ import React, { useState, useEffect } from "react";
 import CustomHeader from "~/components/CustomHeader";
 import { useSavedStops } from "~/store/savedStopStore";
 import { useTransportArrivals } from "~/hooks/useTransportArrivals";
+import { ArrivalsSkeleton } from "~/components/ArrivalSkeleton";
 
 export default function SelectedStop() {
     const { stopName, stopNum, onestop_id, backTo } = useLocalSearchParams();
     const { arrivals, loading, error } = useTransportArrivals(onestop_id);
     const { toggle, isSaved } = useSavedStops();
-    console.log("stopNum:", stopNum, "for", stopName);
+    // console.log("stopNum:", stopNum, "for", stopName);
 
     const handleBack = () => {
         if (backTo === "saved") {
@@ -33,7 +34,7 @@ export default function SelectedStop() {
     // Loading State UI
     if (loading) {
         return (
-            <View className="flex-1 justify-center items-center bg-gray-100">
+            <View style={{ backgroundColor: "#f9f9f9" }}  className="flex-1">
                 <Stack.Screen
                     options={{
                         headerShown: true,
@@ -44,15 +45,14 @@ export default function SelectedStop() {
                                 header={stopName}
                                 directionDepartsView={true}
                                 isSaved={isSaved(onestop_id)}
-                                savedToggle={() => toggle(onestop_id, stopName, stopNum)}
+                                savedToggle={() =>
+                                    toggle(onestop_id, stopName, stopNum)
+                                }
                             />
                         ),
                     }}
                 />
-                <ActivityIndicator size="large" color="#3b82f6" />
-                <Text className="mt-4 text-lg text-gray-700">
-                    Loading departures...
-                </Text>
+                <ArrivalsSkeleton stopNum={stopNum}/>
             </View>
         );
     }
@@ -70,7 +70,9 @@ export default function SelectedStop() {
                                 header={stopName}
                                 directionDepartsView={true}
                                 isSaved={isSaved(onestop_id)}
-                                savedToggle={() => toggle(onestop_id, stopName, stopNum)}
+                                savedToggle={() =>
+                                    toggle(onestop_id, stopName, stopNum)
+                                }
                             />
                         ),
                     }}
@@ -97,7 +99,9 @@ export default function SelectedStop() {
                                 header={stopName}
                                 directionDepartsView={true}
                                 isSaved={isSaved(onestop_id)}
-                                savedToggle={() => toggle(onestop_id, stopName, stopNum)}
+                                savedToggle={() =>
+                                    toggle(onestop_id, stopName, stopNum)
+                                }
                             />
                         ),
                     }}
@@ -128,12 +132,12 @@ export default function SelectedStop() {
                 }}
             />
 
-            <Container>
+            <View style={{ backgroundColor: "#f9f9f9" }} className=' flex-1'>
                 <FlatList
-                    className=""
+                    className="px-5"
                     data={arrivals}
                     renderItem={({ item }) => (
-                        <View className="flex-row items-center justify-between mb-8 px-1">
+                        <View className="flex-row items-center justify-between my-4 px-1">
                             {stopNum !== undefined && stopNum !== "0" ? (
                                 <View className="gap-1">
                                     <Text className="text-2xl font-poppins-medium">
@@ -155,7 +159,7 @@ export default function SelectedStop() {
                         </View>
                     )}
                 />
-            </Container>
+            </View>
         </>
     );
 }

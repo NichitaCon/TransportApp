@@ -1,6 +1,6 @@
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { Stack, Tabs, Link, router } from "expo-router";
-import { FlatList, Pressable, Text, View } from "react-native";
+import { FlatList, Pressable, Text, TouchableOpacity, View } from "react-native";
 import { Button } from "~/components/Button";
 import { Container } from "~/components/Container";
 import { ScreenContent } from "~/components/ScreenContent";
@@ -20,7 +20,7 @@ export default function Saved() {
                     className=""
                     data={saved}
                     renderItem={({ item }) => (
-                        <Pressable
+                        <TouchableOpacity
                             onPress={() => {
                                 router.push({
                                     pathname: "/selectedStop/[onestop_id]",
@@ -68,7 +68,7 @@ export default function Saved() {
                                     </Text>
                                 </View>
                             )}
-                        </Pressable>
+                        </TouchableOpacity>
                     )}
                 />
                 <Pressable

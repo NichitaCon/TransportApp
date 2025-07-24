@@ -1,20 +1,14 @@
-import { Stack, Link } from "expo-router";
-import {
-    Text,
-    Pressable,
-    ActivityIndicator,
-    View,
-    FlatList,
-} from "react-native";
-import { Button } from "~/components/Button";
-import { Container } from "~/components/Container";
-import { ScreenContent } from "~/components/ScreenContent";
+import { Stack } from "expo-router";
+import { Text, View, FlatList } from "react-native";
+
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useState, useEffect } from "react";
+
 import CustomHeader from "~/components/CustomHeader";
 import { useSavedStops } from "~/store/savedStopStore";
 import { useTransportArrivals } from "~/hooks/useTransportArrivals";
 import { ArrivalsSkeleton } from "~/components/ArrivalSkeleton";
+import { MotiView } from "moti";
+import { Easing } from "react-native-reanimated";
 
 export default function SelectedStop() {
     const { stopName, stopNum, onestop_id, backTo } = useLocalSearchParams();
@@ -34,7 +28,7 @@ export default function SelectedStop() {
     // Loading State UI
     if (loading) {
         return (
-            <View style={{ backgroundColor: "#f9f9f9" }}  className="flex-1">
+            <View style={{ backgroundColor: "#f9f9f9" }} className="flex-1">
                 <Stack.Screen
                     options={{
                         headerShown: true,
@@ -52,7 +46,7 @@ export default function SelectedStop() {
                         ),
                     }}
                 />
-                <ArrivalsSkeleton stopNum={stopNum}/>
+                <ArrivalsSkeleton stopNum={stopNum} />
             </View>
         );
     }
@@ -132,31 +126,46 @@ export default function SelectedStop() {
                 }}
             />
 
-            <View style={{ backgroundColor: "#f9f9f9" }} className=' flex-1'>
+            <View style={{ backgroundColor: "#f9f9f9" }} className=" flex-1">
                 <FlatList
                     className="px-5"
                     data={arrivals}
-                    renderItem={({ item }) => (
-                        <View className="flex-row items-center justify-between my-4 px-1">
-                            {stopNum !== undefined && stopNum !== "0" ? (
-                                <View className="gap-1">
-                                    <Text className="text-2xl font-poppins-medium">
-                                        {item.tripBusHeadSign}
-                                    </Text>
-                                    <Text>{item.tripHeadSign}</Text>
-                                </View>
-                            ) : (
-                                <Text className="text-2xl font-poppins-medium">
-                                    {item.tripHeadSign}
-                                </Text>
-                            )}
-
-                            <Text className="text-2xl">
-                                {item.estimatedDepartureDuration === 0
-                                    ? "Now"
-                                    : `${item.estimatedDepartureDuration} Min`}
-                            </Text>
+                    ListHeaderComponent={
+                        <View className="mb-1">
                         </View>
+                    }
+                    renderItem={({ item, index }) => (
+                        <MotiView
+                            from={{ opacity: 0, translateY: 10 }}
+                            animate={{ opacity: 1, translateY: 0 }}
+                            transition={{
+                                delay: index * 100, // 100ms per item
+                                duration: 350,
+                                type: "timing",
+                                easing: Easing.inOut(Easing.ease),
+                            }}
+                        >
+                            <View className="flex-row items-center justify-between my-4 px-1">
+                                {stopNum !== undefined && stopNum !== "0" ? (
+                                    <View className="gap-1">
+                                        <Text className="text-2xl font-poppins-medium">
+                                            {item.tripBusHeadSign}
+                                        </Text>
+                                        <Text>{item.tripHeadSign}</Text>
+                                    </View>
+                                ) : (
+                                    <Text className="text-2xl font-poppins-medium">
+                                        {item.tripHeadSign}
+                                    </Text>
+                                )}
+
+                                <Text className="text-2xl">
+                                    {item.estimatedDepartureDuration === 0
+                                        ? "Now"
+                                        : `${item.estimatedDepartureDuration} Min`}
+                                </Text>
+                            </View>
+                        </MotiView>
                     )}
                 />
             </View>

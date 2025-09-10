@@ -1,5 +1,6 @@
 # TransportApp
 
+<<<<<<< HEAD
 A modern, user-friendly mobile app for exploring public transport options in Ireland, designed to offer a superior experience compared to the current official solutions. Built with React Native and powered by the transit.land API, TransportApp makes it easy to discover, search, and save public transit stops, with support for real-time departures and interactive map clustering. With minor adjustments, it can be adapted for any region supported by the transit.land API.
 
 ---
@@ -104,3 +105,4 @@ Contributions are welcome! Please open issues or pull requests on GitHub.
 
 - [transit.land](https://transit.land/)
 - [react-native-clusterer](https://www.npmjs.com/package/react-native-clusterer)
+=======
